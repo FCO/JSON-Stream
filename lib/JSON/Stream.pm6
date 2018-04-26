@@ -14,15 +14,14 @@ constant @stop-words = '{', '}', '[', ']', '"', ':', ',';
 sub path-key(+@path) { @path.join: "." }
 
 proto parse(State:D, Str --> State:D) { * }
-multi parse($state, '{') {
-    my $path  = path-key $state.path;
-    my @types = |$state.types, object;
-    #my $cache = $state.cache{$path} ~ '{';
-    if $state.path ~~ $state.subscribed {
-        my $cache = $state.cache{$path} ~ '{';
-        return $state.clone: :@types, :cache({$path => $cache})
+multi parse($_, '{') {
+    my $path  = path-key .path;
+    my @p = .path;
+    my @s = .subscribed;
+    if @p ~~ @s {
+        return .clone: :types(|.types, object), :cache(($path => .cache{$path} ~ '{').Hash)
     }
-    $state
+    .clone: :types(|.types, object)
 }
 multi parse($_ where .types.tail ~~ object, '"') {
     my $path  = path-key .path;
