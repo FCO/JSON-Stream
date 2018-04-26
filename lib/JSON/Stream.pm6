@@ -1,6 +1,6 @@
 use JSON::Fast;
 
-enum Type <init object array string number key value item>;
+enum Type <init object array string number key end-key wait-sep value item>;
 
 class State {
     has         @.subscribed;
@@ -24,29 +24,38 @@ multi parse($state, '{') {
     }
     $state
 }
-#multi parse($_ where .types.tail ~~ object, '"') {
-#    my $path  = path-key .path;
-#    with .cache{$path} -> $cache {
-#        emit $path => $cache ~ '"';
-#        .clone: :type[|.type, key], :cache(.cache.grep(*.key !~~ $path).Hash)
-#    }
-#    $_
-#}
-#multi parse($_ where .types.tail ~~ key, $key) {
-#    my $path  = path-key .path;
-#    with .cache{$path} -> $cache {
-#        emit $path => $cache ~ $key;
-#        .clone: :type[|.type, object], :cache(.cache.grep(*.key !~~ $path).Hash)
-#    }
-#    $_
-#}
-multi parse($state where .types.tail ~~ object, '}') {
-    my $path  = path-key $state.path;
-    with $state.cache{$path} -> $cache {
-        emit $path => $cache ~ '}';
-        $state.clone: :cache($state.cache.grep(*.key !~~ $path).Hash)
+multi parse($_ where .types.tail ~~ object, '"') {
+    my $path  = path-key .path;
+    with .cache{$path} -> $cache {
+        return .clone: :types[|.types, key], :cache(|.cache, $path => .cache{$path} ~ '"')
     }
-    $state
+    .clone
+}
+multi parse($_ where .types.tail ~~ key, $key) {
+    # TODO: change path
+    my $path  = path-key .path;
+    with .cache{$path} -> $cache {
+        return .clone: :types[|.types.head(*-1), end-key], :cache(|.cache, $path => .cache{$path} ~ $key)#, :path[|.path, $key]
+    }
+    .clone: :path[|.path, $key]
+}
+multi parse($_ where .types.tail ~~ end-key, '"') {
+    my $path  = path-key .path;
+    with .cache{$path} -> $cache {
+        return .clone: :types[|.types.head(*-1), wait-sep], :cache(|.cache, $path => .cache{$path} ~ '"')
+    }
+    .clone
+}
+multi parse($_ where .types.tail ~~ wait-sep, '}') {
+    parse .clone(:types(.types.head(*-1))), '}'
+}
+multi parse($_ where .types.tail ~~ object, '}') {
+    my $path  = path-key .path;
+    with .cache{$path} -> $cache {
+        emit $path => $cache ~ '}' if .types.elems == 1;
+        .clone: :cache(.cache.grep(*.key !~~ $path).Hash), :types(.types.head: *-1), :path(.path.head: *-1)
+    }
+    .clone: :path(.path.head: *-1)
 }
 multi parse($state, $chunk) {
     #note "parse {$state.perl}, {$chunk.perl}";
