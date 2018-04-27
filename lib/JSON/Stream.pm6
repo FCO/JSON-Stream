@@ -14,8 +14,8 @@ class State {
         |%cache,
         |do for @path.produce: &[,] -> @p {
             my $path = self.path-key: @p;
-            do with %cache{$path} -> $cache {
-                $path => $cache ~ $chunk
+            do if @p ~~ @!subscribed.any {
+                $path => %cache{$path} ~ $chunk
             }
         }
     }
@@ -45,12 +45,7 @@ proto parse(State:D $state, Str $chunk --> State:D) {
     {*}
 }
 multi parse($_, '{') {
-    my @p = .path;
-    my @s = .subscribed;
-    if @p ~~ @s.any {
-        return .clone: :types(.add-type: object), :cache((|.cache, .path-key => '{').Hash)
-    }
-    .clone: :types(.add-type: object)
+    .clone: :types(.add-type: object), :cache(.add-to-cache: '{')
 }
 multi parse($_ where .type ~~ object, '"') {
     .clone: :types(.add-type: key), :cache(.add-to-cache: '"')
