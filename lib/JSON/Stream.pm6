@@ -75,7 +75,7 @@ multi parse($_ where .type ~~ value, ',') {
 }
 multi parse($_ where .type ~~ object, '}') {
     .cond-emit-concat: "}";
-    .clone: :types(.pop-type), :cache(.remove-from-cache: '}')
+    .clone: :types(.pop-type), :cache(.remove-from-cache: '}'), :path(.pop-path)
 }
 multi parse($_, $chunk) {
     .clone: :cache(.add-to-cache: $chunk)
