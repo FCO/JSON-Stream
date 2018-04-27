@@ -22,16 +22,20 @@ class State {
     method remove-from-cache($chunk, :%cache = %!cache, :@path = @!path --> Hash()) {
         |self.add-to-cache($chunk, :%cache, :path(self.pop-path: :@path)).grep: { .key !~~ self.path-key: @path }
     }
-    method add-type(Type $type, Type :@types = @!types --> List)    { |@types, $type }
-    method change-type(Type $type, Type :@types = @!types --> List) { |@types.head(*-1), $type }
-    method pop-type(Type @types = @!types --> List)                 { |@types.head: *-1 }
-    method pop-path(Str :@path = @!path --> List)                   { |@path.head: *-1 }
-    method add-path(Str $path, Str :@path = @!path --> List)        { |@path, $path }
+    method add-type(Type $type, Type :@types = @!types      --> List) { |@types, $type }
+    method change-type(Type $type, Type :@types = @!types   --> List) { |@types.head(*-1), $type }
+    method pop-type(Type @types = @!types                   --> List) { |@types.head: *-1 }
+    method pop-path(Str :@path = @!path                     --> List) { |@path.head: *-1 }
+    method add-path(Str $path, :@path = @!path              --> List) { |@path, $path }
+    method increment-path(Str :@path = @!path               --> List) {
+        my Str $new-index = ~(@path.tail + 1);
+        self.add-path: :path(self.pop-path: :@path), $new-index
+    }
     method cond-emit(:%cache = %!cache, :@path = @!path)            {
         my $path = self.path-key: @path;
         emit %cache{$path}:p unless %cache{$path} ~~ ""
     }
-    method cond-emit-concat($chunk, :%cache = %!cache, :@path = @!path) {
+    method cond-emit-concat($chunk = "", :%cache = %!cache, :@path = @!path) {
         #say "cond-emit-concat {$chunk.perl}, {%cache.perl}, {@path.perl}";
         my $path = self.path-key: @path;
         self.cond-emit: :cache(self.add-to-cache: $chunk, :@path) unless %cache{$path} ~~ ""
@@ -46,6 +50,9 @@ proto parse(State:D $state, Str $chunk --> State:D) {
 }
 multi parse($_, '{') {
     .clone: :types(.add-type: object), :cache(.add-to-cache: '{')
+}
+multi parse($_, '[') {
+    .clone: :types(.add-type: array), :cache(.add-to-cache: '['), :path(.add-path: "0")
 }
 multi parse($_ where .type ~~ object, '"') {
     .clone: :types(.add-type: key), :cache(.add-to-cache: '"')
@@ -73,11 +80,23 @@ multi parse($_ where .type ~~ value, '}') {
 multi parse($_ where .type ~~ value, ',') {
     .clone: :types(.pop-type), :cache(.add-to-cache: ',')
 }
+multi parse($_ where .type ~~ array, ',') {
+    .cond-emit-concat;
+    .clone: :cache(.add-to-cache: ','), :path(.increment-path)
+}
+multi parse($_ where .type ~~ array, ']') {
+    .cond-emit-concat: "]", :path(.pop-path);
+    .clone: :types(.pop-type), :cache(.remove-from-cache: ']'), :path(.pop-path)
+}
 multi parse($_ where .type ~~ object, '}') {
     .cond-emit-concat: "}";
     .clone: :types(.pop-type), :cache(.remove-from-cache: '}'), :path(.pop-path)
 }
+multi parse($_ where .type ~~ string, $chunk) {
+    .clone: :cache(.add-to-cache: $chunk)
+}
 multi parse($_, $chunk) {
+    .cond-emit-concat: $chunk;
     .clone: :cache(.add-to-cache: $chunk)
 }
 
