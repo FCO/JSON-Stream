@@ -1,71 +1,91 @@
 use JSON::Fast;
 
-enum Type <init object array string number key end-key wait-sep value item>;
+enum Type <init object array string number key end-key wait-sep value end-value item>;
 
 class State {
     has         @.subscribed;
     has Type    @.types;
     has Str     @.path = '$';
     has Str     %.cache is default("");
+
+    method type { @!types.tail }
+    method path-key(@path = @!path) { @path.join: "." }
+    method add-to-cache($chunk, :%cache = %!cache, :@path = @!path --> Hash()) {
+        |%cache,
+        |do for @path.produce: &[,] -> @p {
+            my $path = self.path-key: @p;
+            do with %cache{$path} -> $cache {
+                $path => $cache ~ $chunk
+            }
+        }
+    }
+    method remove-from-cache($chunk, :%cache = %!cache, :@path = @!path --> Hash()) {
+        |self.add-to-cache($chunk, :%cache, :path(self.pop-path: :@path)).grep: { .key !~~ self.path-key: @path }
+    }
+    method add-type(Type $type, Type :@types = @!types --> List) { |@types, $type }
+    method change-type(Type $type, Type :@types = @!types --> List) { |@types.head(*-1), $type }
+    method pop-type(Type :@types = @!types --> List) { |@types.head: *-1 }
+    method pop-path(Str :@path = @!path --> List) { |@path.head: *-1 }
+    method add-path(Str $path, Str :@path = @!path --> List) { |@path, $path }
+    method cond-emit(:%cache = %!cache, :@path = @!path) {
+        my $path = self.path-key: @path;
+        emit %cache{$path}:p unless %cache{$path} ~~ ""
+    }
+    method cond-emit-concat($chunk, :%cache = %!cache, :@path = @!path) {
+        my $path = self.path-key: @path;
+        self.cond-emit: :cache(self.add-to-cache: $chunk, :@path) unless %cache{$path} ~~ ""
+    }
 }
 
 constant @stop-words = '{', '}', '[', ']', '"', ':', ',';
 
-sub path-key(+@path) { @path.join: "." }
-
-proto parse(State:D, Str --> State:D) { * }
+proto parse(State:D $state, Str $chunk --> State:D) {
+    #note "parse {$state.perl}, {$chunk.perl}";
+    {*}
+}
 multi parse($_, '{') {
-    my $path  = path-key .path;
     my @p = .path;
     my @s = .subscribed;
-    if @p ~~ @s {
-        return .clone: :types(|.types, object), :cache(($path => .cache{$path} ~ '{').Hash)
+    if @p ~~ @s.any {
+        return .clone: :types(.add-type: object), :cache((|.cache, .path-key => '{').Hash)
     }
-    .clone: :types(|.types, object)
+    .clone: :types(.add-type: object)
 }
-multi parse($_ where .types.tail ~~ object, '"') {
-    my $path  = path-key .path;
-    with .cache{$path} -> $cache {
-        return .clone: :types[|.types, key], :cache(|.cache, $path => .cache{$path} ~ '"')
-    }
-    .clone
+multi parse($_ where .type ~~ object, '"') {
+    .clone: :types(.add-type: key), :cache(.add-to-cache: '"')
 }
-multi parse($_ where .types.tail ~~ key, $key) {
-    # TODO: change path
-    my $path  = path-key .path;
-    with .cache{$path} -> $cache {
-        return .clone: :types[|.types.head(*-1), end-key], :cache(|.cache, $path => .cache{$path} ~ $key)#, :path[|.path, $key]
-    }
-    .clone: :path[|.path, $key]
+multi parse($_ where .type ~~ key, $key) {
+    .clone: :types(.change-type: end-key), :cache(.add-to-cache: $key), :path[.add-path: $key]
 }
-multi parse($_ where .types.tail ~~ end-key, '"') {
-    my $path  = path-key .path;
-    with .cache{$path} -> $cache {
-        return .clone: :types[|.types.head(*-1), wait-sep], :cache(|.cache, $path => .cache{$path} ~ '"')
-    }
-    .clone
+multi parse($_ where .type ~~ end-key, '"') {
+    .clone: :types(.change-type: value), :cache(.add-to-cache: '"', :path(.pop-path))
 }
-multi parse($_ where .types.tail ~~ wait-sep, '}') {
-    parse .clone(:types(.types.head(*-1))), '}'
+multi parse($_ where .type ~~ value, ':') {
+    .clone: :types(.change-type: value), :cache(.add-to-cache: ':', :path(.pop-path))
 }
-multi parse($_ where .types.tail ~~ object, '}') {
-    my $path  = path-key .path;
-    with .cache{$path} -> $cache {
-        emit $path => $cache ~ '}' if .types.elems == 1;
-        .clone: :cache(.cache.grep(*.key !~~ $path).Hash), :types(.types.head: *-1), :path(.path.head: *-1)
-    }
-    .clone: :path(.path.head: *-1)
+multi parse($_, '"') {
+    .cond-emit-concat: "\"";
+    .clone: :types(.add-type: string), :cache(.add-to-cache: '"')
 }
-multi parse($state, $chunk) {
-    #note "parse {$state.perl}, {$chunk.perl}";
-    my $path  = path-key $state.path;
-    with $state.cache{$path} -> $cpath {
-        return $state.clone: :cache((|$state.cache, $path => $cpath ~ $chunk).Hash)
-    }
-    $state
+multi parse($_ where .type ~~ string, '"') {
+    .cond-emit-concat: "\"";
+    .clone: :types(.pop-type), :cache(.remove-from-cache: '"')
+}
+multi parse($_ where .type ~~ value, '}') {
+    parse .clone(:types(.pop-type), :path(.pop-path)), '}'
+}
+multi parse($_ where .type ~~ value, ',') {
+    .clone: :types(.pop-type: string), :cache(.add-to-cache: ',')
+}
+multi parse($_ where .type ~~ object, '}') {
+    .cond-emit-concat: "}";
+    .clone: :types(.pop-type), :cache(.remove-from-cache: '}')
+}
+multi parse($_, $chunk) {
+    .clone: :cache(.add-to-cache: $chunk)
 }
 
-sub json-stream(Supply $supply, *@subscribed) is export {
+sub json-stream(Supply $supply, @subscribed) is export {
     my $s1 = supply {
         my @rest;
         whenever $supply -> $chunk {
@@ -88,6 +108,7 @@ sub json-stream(Supply $supply, *@subscribed) is export {
     }
     supply {
         whenever $s2 -> (:$key, :$value) {
+            #say $value;
             emit $key => from-json $value
         }
     }
