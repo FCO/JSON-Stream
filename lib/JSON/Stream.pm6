@@ -85,7 +85,7 @@ multi parse($_ where .type ~~ array, ',') {
     .clone: :cache(.add-to-cache: ','), :path(.increment-path)
 }
 multi parse($_ where .type ~~ array, ']') {
-    .cond-emit-concat: "]", :path(.pop-path);
+    .cond-emit-concat: "]";
     .clone: :types(.pop-type), :cache(.remove-from-cache: ']'), :path(.pop-path)
 }
 multi parse($_ where .type ~~ object, '}') {
