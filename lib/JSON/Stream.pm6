@@ -22,16 +22,17 @@ class State {
     method remove-from-cache($chunk, :%cache = %!cache, :@path = @!path --> Hash()) {
         |self.add-to-cache($chunk, :%cache, :path(self.pop-path: :@path)).grep: { .key !~~ self.path-key: @path }
     }
-    method add-type(Type $type, Type :@types = @!types --> List) { |@types, $type }
+    method add-type(Type $type, Type :@types = @!types --> List)    { |@types, $type }
     method change-type(Type $type, Type :@types = @!types --> List) { |@types.head(*-1), $type }
-    method pop-type(Type :@types = @!types --> List) { |@types.head: *-1 }
-    method pop-path(Str :@path = @!path --> List) { |@path.head: *-1 }
-    method add-path(Str $path, Str :@path = @!path --> List) { |@path, $path }
-    method cond-emit(:%cache = %!cache, :@path = @!path) {
+    method pop-type(Type @types = @!types --> List)                 { |@types.head: *-1 }
+    method pop-path(Str :@path = @!path --> List)                   { |@path.head: *-1 }
+    method add-path(Str $path, Str :@path = @!path --> List)        { |@path, $path }
+    method cond-emit(:%cache = %!cache, :@path = @!path)            {
         my $path = self.path-key: @path;
         emit %cache{$path}:p unless %cache{$path} ~~ ""
     }
     method cond-emit-concat($chunk, :%cache = %!cache, :@path = @!path) {
+        #say "cond-emit-concat {$chunk.perl}, {%cache.perl}, {@path.perl}";
         my $path = self.path-key: @path;
         self.cond-emit: :cache(self.add-to-cache: $chunk, :@path) unless %cache{$path} ~~ ""
     }
@@ -69,13 +70,13 @@ multi parse($_, '"') {
 }
 multi parse($_ where .type ~~ string, '"') {
     .cond-emit-concat: "\"";
-    .clone: :types(.pop-type), :cache(.remove-from-cache: '"')
+    .clone: :types(.pop-type), :cache(.remove-from-cache: '"'), :path(.pop-path)
 }
 multi parse($_ where .type ~~ value, '}') {
-    parse .clone(:types(.pop-type), :path(.pop-path)), '}'
+    parse .clone(:types(.pop-type)), '}'
 }
 multi parse($_ where .type ~~ value, ',') {
-    .clone: :types(.pop-type: string), :cache(.add-to-cache: ',')
+    .clone: :types(.pop-type), :cache(.add-to-cache: ',')
 }
 multi parse($_ where .type ~~ object, '}') {
     .cond-emit-concat: "}";
