@@ -1,3 +1,19 @@
+=begin pod
+
+=head1 JSON::Stream
+
+A JSON stream parser
+
+	react whenever json-stream "a-big-json-file.json".IO.Supply, [["\$", "employees", *],] -> (:$key, :$value) {
+	   say "[$key => $value.perl()]"
+	}
+
+=head2 Warning
+
+It doesn't validate the json. If the json isn't valid, it may have unusual behavior.
+
+=end pod
+
 use JSON::Fast;
 use JSON::Stream::Type;
 use JSON::Stream::State;
