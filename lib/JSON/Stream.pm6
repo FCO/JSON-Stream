@@ -24,11 +24,13 @@ sub json-stream(Supply $supply, @subscribed) is export {
     my $s2 = supply {
         my State $state .= new: :@subscribed;
         whenever $s1 -> $chunk {
+			#dd $state.cache;
             $state = parse $state, $chunk;
         }
     }
     supply {
         whenever $s2 -> (:$key, :$value) {
+			#say $value;
 			emit $key => from-json $value
         }
     }

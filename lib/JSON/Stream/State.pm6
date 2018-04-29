@@ -23,7 +23,7 @@ method remove-from-cache($chunk, :%cache = %!cache, :@path = @!path --> Hash()) 
 method add-type(Type $type, :@types = @!types           --> List) is pure { |@types, $type }
 method change-type(Type $type, :@types = @!types        --> List) is pure { self.add-type: $type, :types(self.pop-type: :@types) }
 method pop-type(UInt $num = 1, Type @types = @!types    --> List) is pure { |@types.head: *-$num }
-method pop-path(UInt $num = 1, Str :@path = @!path      --> List) is pure { |@path.head: *-$num }
+method pop-path(UInt $num = 1, :@path = @!path          --> List) is pure { |@path.head: *-$num }
 method add-path(Str $path, :@path = @!path              --> List) is pure { |@path, $path }
 method increment-path(Str :@path = @!path               --> List) is pure {
     #say @path;

@@ -10,7 +10,7 @@ proto parse(State:D $state, Str $chunk --> State:D) is pure is export { * }
 multi parse($_ where .type ~~ [string, key].none, $chunk where * ~~ @stop-words.none) {
     debug "parse generic";
     .cond-emit-concat: $chunk;
-    .clone: :cache(.add-to-cache: $chunk)
+    .clone: :cache(.remove-from-cache: $chunk)
 }
 
 # STRING
@@ -74,7 +74,7 @@ multi parse($_ where .type ~~ value, ',') {
 multi parse($_ where .type ~~ value | object, '}') {
     debug "parse object end";
     .cond-emit-concat: '}', :path(.pop-path);
-    .clone: :types(.pop-type: 1 + (.type ~~ object ?? 0 !! 1)), :cache(.remove-from-cache: '}'), :path(.pop-path)
+    .clone: :types(.pop-type: .type ~~ object ?? 1 !! 2), :cache(.remove-from-cache: '}', :path(.pop-path)), :path(.pop-path)
 }
 
 # ARRAY
@@ -87,7 +87,7 @@ multi parse($_, '[') {
 # array sep
 multi parse($_ where .type ~~ array, ',') {
     debug "parse array sep";
-    .clone: :cache(.add-to-cache: ','), :path(.increment-path)
+    .clone: :cache(.remove-from-cache: ','), :path(.increment-path)
 }
 
 # array end
