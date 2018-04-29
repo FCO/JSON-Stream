@@ -1,7 +1,7 @@
 use JSON::Stream;
 use Test;
 
-plan 26;
+plan 29;
 
 react {
     whenever json-stream Supply.from-list(['42',]), [['$',],] -> (:$key, :$value) {
@@ -68,5 +68,12 @@ react {
         is $key,    '$';
         is $value.^name,  "Hash";
         is $value.elems, 3;
+    }
+
+    whenever json-stream Supply.from-list(<[ { "bla" : "ble" } , { "bli" : "blo" } ]>), [['$',],] -> (:$key, :$value) {
+        say "$key => $value.perl()";
+        is $key,    '$';
+        is $value.^name,  "Array";
+        is $value.elems, 2;
     }
 }
