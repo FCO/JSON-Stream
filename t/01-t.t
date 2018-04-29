@@ -1,7 +1,7 @@
 use JSON::Stream;
 use Test;
 
-plan 91;
+plan 93;
 
 react {
     whenever json-stream Supply.from-list(['42',]), [['$',],] -> (:$key, :$value) {
@@ -176,6 +176,12 @@ react {
         say "$key => $value.perl()";
         is $key,    '$.bla.1.ble';
         is $value, 3.14
+    }
+
+    whenever json-stream Supply.from-list(<" \" bla \" \"ble\" \"\"\"bli\"\"\" b\"l\"o blu ">), [['$',],] -> (:$key, :$value) {
+        say "$key => $value.perl()";
+        is $key,    '$';
+        is $value, "\"bla\"\"ble\"\"\"\"bli\"\"\"b\"l\"oblu";
     }
 }
 

@@ -9,7 +9,7 @@ sub json-stream(Supply $supply, @subscribed) is export {
     my $s1 = supply {
         my @rest;
         whenever $supply -> $chunk {
-            my @chunks = $chunk.comb: /'[' || ']' || '{' || '}' || '"' || ':' || ',' || <-[[\]{}":,]>+/;
+            my @chunks = $chunk.comb: /'[' | ']' | '{' | '}' | <!after \\> '"' | ':' | ',' | [<-[[\]{}":,]> | <after \\> '"']+/;
             @chunks .= grep: * !~~ /^\s+$/;
             if @rest and @chunks.head ~~ @stop-words.none {
                 @rest.tail ~= @chunks.shift;
