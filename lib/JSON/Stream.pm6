@@ -19,7 +19,7 @@ use JSON::Stream::Type;
 use JSON::Stream::State;
 use JSON::Stream::Parse;
 
-#constant @stop-words = '{', '}', '[', ']', '"', ':', ',';
+constant @stop-words = '{', '}', '[', ']', '"', ':', ',';
 
 sub json-stream(Supply $supply, @subscribed) is export {
     my $s1 = supply {
@@ -38,16 +38,16 @@ sub json-stream(Supply $supply, @subscribed) is export {
         }
     }
     my $s2 = supply {
-        my State $state .= new: :@subscribed;
+        my Parser $state .= new: :@subscribed;
         whenever $s1 -> $chunk {
-			#dd $state.cache;
-            $state = parse $state, $chunk;
+            #dd $state.cache;
+            $state.parse: $chunk;
         }
     }
     supply {
-        whenever $s2 -> (:$key, :$value) {
-			#say $value;
-			emit $key => from-json $value
+        whenever $s2.grep: {.value !~~ /^ \s* $/} -> (:$key, :$value) {
+            #dd $value;
+            emit $key => from-json $value
         }
     }
 }

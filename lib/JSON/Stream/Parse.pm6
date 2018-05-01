@@ -1,99 +1,158 @@
 use JSON::Stream::State;
 use JSON::Stream::Type;
+unit class Parser;
+
+has         @.subscribed;
+has Type    @.types = init;
+has Str     @.path = '$';
+has Str     %.cache is default("");
+
+method json-path($num = 0) { @!path.head(* - $num).join: "." }
 
 #my $*DEBUG = True;
 sub debug(|c) { note |c if $*DEBUG }
 constant @stop-words = '{', '}', '[', ']', '"', ':', ',';
 
-proto parse(State:D $state, Str $chunk --> State:D) is pure is export { * }
+method add-to-cache($chunk, $from = 0) {
+    for $from .. (@!path - 1) -> $i {
+        my @p = |@!path.head(* - $i);
+        %!cache{self.json-path: $i} ~= $chunk if @p ~~ @!subscribed.any
+    }
+}
 
-multi parse($_ where .type ~~ [string, key].none, $chunk where * ~~ @stop-words.none) {
+method emit-pair($num = 0) {
+    emit self.json-path($num) => %!cache{self.json-path: $num}:delete if @!path ~~ @!subscribed.any
+}
+
+multi method parse(Str $chunk) {
+    debug "self.parse: {@!types.tail}, $chunk";
+    #dd %!cache;
+    self.parse: @!types.tail, $chunk
+}
+
+multi method parse($ where none(string, key), $chunk where * ~~ @stop-words.none) {
     debug "parse generic";
-    .cond-emit-concat: $chunk;
-    .clone: :cache(.remove-from-cache: $chunk)
+    self.add-to-cache: $chunk;
+    self.emit-pair;
+    #.cond-emit-concat: $chunk;
+    # .clone: :cache(.remove-from-cache: $chunk)
 }
 
 # STRING
 # string start
-multi parse($_ where .type ~~ [string, object, key].none, '"') {
+multi method parse($ where none(string, object, key), '"') {
     debug "parse string start";
-    .clone: :types(.add-type: string), :cache(.add-to-cache: '"')
+    @!types.push: string;
+    self.add-to-cache: '"';
+    #.clone: :types(.add-type: string), :cache(.add-to-cache: '"')
 }
 
 # string body
-multi parse($_ where .type ~~ string, $chunk) {
+multi method parse(string, $chunk) {
     debug "parse string body";
-    .clone: :cache(.add-to-cache: $chunk)
+    self.add-to-cache: $chunk;
+    #.clone: :cache(.add-to-cache: $chunk)
 }
 
 # string end
-multi parse($_ where .type ~~ string, '"') {
+multi method parse(string, '"') {
     debug "parse string end";
-    .cond-emit-concat: '"';
-    .clone: :types(.pop-type), :cache(.remove-from-cache: '"')
+    self.add-to-cache: '"';
+    self.emit-pair;
+    @!types.pop;
+    #.cond-emit-concat: '"';
+    #.clone: :types(.pop-type), :cache(.remove-from-cache: '"')
 }
 
 # OBJECT
 # object start
-multi parse($_, '{') {
+multi method parse($_, '{') {
     debug "parse object start";
-    .clone: :types(.add-type: object), :cache(.add-to-cache: '{')
+    self.add-to-cache: '{';
+    @!types.push: object;
+    #.clone: :types(.add-type: object), :cache(.add-to-cache: '{')
 }
 
 # object key start
-multi parse($_ where .type ~~ object, '"') {
+multi method parse(object, '"') {
     debug "parse object key start";
-    .clone: :types(.add-type: key), :cache(.add-to-cache: '"')
+    self.add-to-cache: '"';
+    @!types.push: key;
+    #.clone: :types(.add-type: key), :cache(.add-to-cache: '"')
 }
 
 # object key body
-multi parse($_ where .type ~~ key, $key where * ~~ @stop-words.none) {
+multi method parse(key, $key where * ~~ @stop-words.none) {
     debug "parse object key body";
-    .clone: :cache(.add-to-cache: $key), :path[.add-path: $key]
+    self.add-to-cache: $key;
+    @!path.push: $key;
+    #.clone: :cache(.add-to-cache: $key), :path[.add-path: $key]
 }
 
 # object key end
-multi parse($_ where .type ~~ key, '"') {
+multi method parse(key, '"') {
     debug "parse object key end";
-    .clone: :type(.pop-type), :cache(.add-to-cache: '"', :path(.pop-path))
+    self.add-to-cache: '"', 1;
+    @!types.pop;
+    #.clone: :type(.pop-type), :cache(.add-to-cache: '"', :path(.pop-path))
 }
 
 # object key sep
-multi parse($_ where .type ~~ key, ':') {
+multi method parse(object, ':') {
     debug "parse object key sep";
-    .clone: :types(.change-type: value), :cache(.add-to-cache: ':', :path(.pop-path))
+    self.add-to-cache: ':', 1;
+    @!types.push: value;
+    #.clone: :types(.change-type: value), :cache(.add-to-cache: ':', :path(.pop-path))
 }
 
 # object sep
-multi parse($_ where .type ~~ value, ',') {
+multi method parse(value, ',') {
     debug "parse object sep";
-    .clone: :types(.pop-type), :cache(.add-to-cache: ','), :path(.pop-path)
+    self.add-to-cache: ',';
+    @!types.pop;
+    @!path.pop;
+    #.clone: :types(.pop-type), :cache(.add-to-cache: ','), :path(.pop-path)
 }
 
 # object end
-multi parse($_ where .type ~~ value | object, '}') {
+multi method parse($ where any(value, object), '}') {
     debug "parse object end";
-    .cond-emit-concat: '}', :path(.pop-path);
-    .clone: :types(.pop-type: .type ~~ object ?? 1 !! 2), :cache(.remove-from-cache: '}', :path(.pop-path)), :path(.pop-path)
+    @!path.pop;
+    self.add-to-cache: '}';
+    self.emit-pair;
+    @!types.pop;
+    @!types.pop if @!types.tail ~~ object;
+    #.cond-emit-concat: '}', :path(.pop-path);
+    #.clone: :types(.pop-type: .type ~~ object ?? 1 !! 2), :cache(.remove-from-cache: '}', :path(.pop-path)), :path(.pop-path)
 }
 
 # ARRAY
 # array start
-multi parse($_, '[') {
+multi method parse($, '[') {
     debug "parse array start";
-    .clone: :types(.add-type: array), :cache(.add-to-cache: '['), :path(.add-path: "0")
+    self.add-to-cache: '[';
+    @!types.push: array;
+    @!path.push: "0";
+    #.clone: :types(.add-type: array), :cache(.add-to-cache: '['), :path(.add-path: "0")
 }
 
 # array sep
-multi parse($_ where .type ~~ array, ',') {
+multi method parse(array, ',') {
     debug "parse array sep";
-    .clone: :cache(.remove-from-cache: ','), :path(.increment-path)
+    self.add-to-cache: ',';
+    %!cache{@.json-path}:delete;
+    @!path.tail++;
+    #.clone: :cache(.remove-from-cache: ','), :path(.increment-path)
 }
 
 # array end
-multi parse($_ where .type ~~ array, ']') {
+multi method parse(array, ']') {
     debug "parse array end";
-    .cond-emit-concat: ']', :path(.pop-path);
-    .clone: :types(.pop-type), :cache(.remove-from-cache: ']'), :path(.pop-path)
+    self.add-to-cache: ']', 1;
+    self.emit-pair: 1;
+    @!types.pop;
+    @!path.pop;
+    #.cond-emit-concat: ']', :path(.pop-path);
+    #.clone: :types(.pop-type), :cache(.remove-from-cache: ']'), :path(.pop-path)
 }
 
