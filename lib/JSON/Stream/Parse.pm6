@@ -21,7 +21,8 @@ method add-to-cache($chunk, $from = 0) {
 }
 
 method emit-pair($num = 0) {
-    emit self.json-path($num) => %!cache{self.json-path: $num}:delete if @!path ~~ @!subscribed.any
+    my @p = |@!path.head(* - $num);
+    emit self.json-path($num) => %!cache{self.json-path: $num}:delete if @p ~~ @!subscribed.any
 }
 
 multi method parse(Str $chunk) {
