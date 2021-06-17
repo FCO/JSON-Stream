@@ -1,6 +1,8 @@
 Revision history for JSON-Stream
 
 {{$NEXT}}
+
+0.0.2  2021-06-17T20:04:28+01:00
     - Accept strings as json-path
 
 0.0.1  2021-06-17T19:58:50+01:00
