@@ -1,3 +1,5 @@
+unit module JSON::Stream:ver<0.0.1>;
+
 =begin pod
 
 =head1 JSON::Stream
