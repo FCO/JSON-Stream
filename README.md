@@ -5,14 +5,38 @@ JSON::Stream
 
 A JSON stream parser
 
-```perl6
-    react whenever json-stream "a-big-json-file.json".IO.Supply, [["\$", "employees", *],] -> (:$key, :$value) {
-       say "[$key => $value.perl()]"
-    }
+```raku
+react whenever json-stream "a-big-json-file.json".IO.open.Supply, '$.employees.*' -> (:$key, :$value) {
+   say "[$key => $value.raku()]"
+}
 ```
 
 Warning
 -------
 
-It doesn't validate the json. If the json isn't valid, it may have unusual behavior.
+It doesn't validate the JSON. That's good for cases where the JSON isn't properly terminated. Example:
+
+```raku
+react whenever json-stream Supply.from-list(< { "bla" : [1,2,3,4], >), '$.bla.*' -> (:key($), :$value) {
+   say $value
+}
+```
+
+##### Prints:
+
+    1
+    2
+    3
+    4
+
+### sub json-stream
+
+```raku
+sub json-stream(
+    Supply $supply,
+    +@subscribed
+) returns Supply
+```
+
+Receives an supply and a list of simplified json-path strings
 

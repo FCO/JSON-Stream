@@ -2,12 +2,20 @@ use JSON::Stream::Type;
 use JSON::Fast;
 unit class Parser;
 
-has         @.subscribed;
+has         @!subscribed;
 has Type    @.types = init;
 has Str     @.path = '$';
 has Str     %.cache is default("");
 
 method json-path($num = 0) { @!path.head(* - $num).join: "." }
+
+multi submethod TWEAK(:@subscribed is copy) {
+    my multi transform("*")  { *  }
+    my multi transform("**") { ** }
+    my multi trans-l1(Positional $p) { $p }
+    my multi trans-l1(Str $s)        { $s.split(".").duckmap(&transform).Array }
+    @!subscribed = @subscribed.duckmap: &trans-l1;
+}
 
 #my $*DEBUG = True;
 sub debug(|c) { note |c if $*DEBUG }
