@@ -1,4 +1,4 @@
-unit module JSON::Stream:ver<0.0.3>;
+unit module JSON::Stream:ver<0.0.4>;
 
 =begin pod
 
