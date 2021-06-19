@@ -27,7 +27,8 @@
   "tags": [
   ],
   "test-depends": [
-    "Test::META"
+    "Test::META",
+    "Pod::Test::Code"
   ],
   "version": "0.0.3"
 }

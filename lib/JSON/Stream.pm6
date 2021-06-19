@@ -7,8 +7,35 @@ unit module JSON::Stream:ver<0.0.3>;
 A JSON stream parser
 
 =begin code :lang<raku>
+use JSON::Stream;
+=end code
+
+=begin code :lang<raku> :subtest("Emit twice")
+plan 6;
 react whenever json-stream "a-big-json-file.json".IO.open.Supply, '$.employees.*' -> (:$key, :$value) {
-   say "[$key => $value.raku()]"
+    [
+        {
+            is $key,         '$.employees.0';
+            is $value<name>, 'John';
+            is $value<age>,  40;
+        },
+        {
+            is $key,         '$.employees.1';
+            is $value<name>, 'Peter';
+            is $value<age>,  30;
+        }
+    ].[$++].()
+}
+=end code
+
+Having this as an example of 'a-big-json-file.json'
+
+=begin code :lang<json> :file<a-big-json-file.json>
+{
+    "employees": [
+        { "name": "John",  "age": 40 },
+        { "name": "Peter", "age": 30 }
+    ]
 }
 =end code
 
@@ -17,18 +44,11 @@ react whenever json-stream "a-big-json-file.json".IO.open.Supply, '$.employees.*
 It doesn't validate the JSON. That's good for cases where the JSON isn't properly terminated.
 Example:
 
-=begin code :lang<raku>
+=begin code :lang<raku> :subtest("Emits 4 times")
+plan 4;
 react whenever json-stream Supply.from-list(< { "bla" : [1,2,3,4], >), '$.bla.*' -> (:key($), :$value) {
-   say $value
+   is $value, ++$
 }
-=end code
-
-##### Prints:
-=begin code
-1
-2
-3
-4
 =end code
 
 =end pod
@@ -54,7 +74,7 @@ sub json-stream(Supply $supply, +@subscribed --> Supply) is export {
             @rest = ();
             @rest.unshift: @new-chunks.pop while @new-chunks and @new-chunks.tail ~~ @stop-words.none;
             $state.parse: $_ for @new-chunks;
-			LAST $state.parse: $_ for @rest;
+            LAST $state.parse: $_ for @rest;
         }
     }
 }
