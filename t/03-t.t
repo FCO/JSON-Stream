@@ -1,8 +1,10 @@
 use JSON::Stream;
 use Test;
 
+plan 8;
+
 react {
-    whenever json-stream Supply.from-list(<[ { "bla" : [1,2, {"blu" : 42}] } , { "ble" : {"bli": "blo", "blu": [ 1, { "blu" : [ { "blu" : 42 } ] } ] } } ]>), < $.*.ble.**.blu > -> (:$key, :$value) {
+    whenever json-stream Supply.from-list(<[ { "bla" : [1,2, {"blu" : 42}] } , { "ble" : {"bli": "blo", "blu": [ 1, { "blu" : [ { "blu" : 42 } ] } ] } } ]>), < $.*.ble..blu > -> (:$key, :$value) {
         say "$key => $value.raku()";
         given $++ {
             when 0 {

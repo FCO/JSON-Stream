@@ -1,77 +1,129 @@
 use JSON::Stream;
 use Test;
 
-plan 93;
+plan 111;
 
+my $counter;
+my $c;
 react {
     whenever json-stream Supply.from-list(['42',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value,  42;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(['3.14',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value,  3.14;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(['true',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value,  True;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(['"bla"',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value,  "bla";
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(['["bla"]',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value.^name,  "Array";
         is $value.elems, 1;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(['["bla", "ble", "bli"]',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value.^name,  "Array";
         is $value.elems, 3;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(['["bla", 42, 3.14, true]',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value.^name,  "Array";
         is $value.elems, 4;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(['{"bla":"ble"}',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value.^name,  "Hash";
         is $value.elems, 1;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(['{"bla":"ble", "bli": "blo"}',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value.^name,  "Hash";
         is $value.elems, 2;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(['{"bla":42, "ble":[1,2], "bli":{"blo":"blu"}}',]), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value.^name,  "Hash";
         is $value.elems, 3;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(<[ { "bla" : "ble" } , { "bli" : "blo" } ]>), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value.^name,  "Array";
         is $value.elems, 2;
@@ -80,9 +132,14 @@ react {
         is $value[1].^name, "Hash";
         is $value[1].elems, 1;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(<[ { "bla" : [1,2,3] } , { "ble" : {"bli": "blo", "blu": 42} } ]>), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value.^name,  "Array";
         is $value.elems, 2;
@@ -95,9 +152,14 @@ react {
         is $value[1]<ble>.^name, "Hash";
         is $value[1]<ble>.elems, 2;
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(<[ { "bla" : [1,2,3] } , { "ble" : {"bli": "blo", "blu": 42} } ]>), [<$ 0>, <$ 1>] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         given $++ {
             when 0 {
                 is $key,    '$.0';
@@ -115,9 +177,14 @@ react {
             }
         }
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(<[ { "bla" : [1,2,3] } , { "ble" : {"bli": "blo", "blu": 42} } ]>), [['$', *],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         given $++ {
             when 0 {
                 is $key,    '$.0';
@@ -135,9 +202,14 @@ react {
             }
         }
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(<[ { "bla" : [1,2,3] } , { "bla" : {"bli": "blo", "blu": 42} } ]>), [['$', **, 'bla'],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         given $++ {
             when 0 {
                 is $key,    '$.0.bla';
@@ -151,9 +223,14 @@ react {
             }
         }
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(<[ { "bla" : [1,2, {"blu" : 42}] } , { "ble" : {"bli": "blo", "blu": 13} } ]>), [['$', **, 'blu'],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         given $++ {
             when 0 {
                 is $key,    '$.0.bla.2.blu';
@@ -165,21 +242,36 @@ react {
             }
         }
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(<{ " bla " : 42>), [['$', 'bla'],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$.bla';
         is $value, 42
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(<{ " bla " : [ 1 , { "ble": 3.14>), [<$ bla 1 ble>,] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$.bla.1.ble';
         is $value, 3.14
     }
+}
 
+is $counter, ++$c, "Did it run?";
+$counter = $c;
+
+react {
     whenever json-stream Supply.from-list(<" \" bla \" { [ \" ble \" ] } \" bli ">), [['$',],] -> (:$key, :$value) {
-        say "$key => $value.perl()";
+        $counter++ unless $++;
         is $key,    '$';
         is $value, "\"bla\"\{[\"ble\"]}\"bli";
     }
@@ -190,7 +282,7 @@ my Promise @p = Promise.new xx 10;
 
 start react {
     whenever json-stream $s.Supply, [ [ **, ], ] -> (:$key, :$value) {
-        say "$key -> $value";
+        say "$key => $value.perl() - line: { $?LINE }";
         given $++ {
             when 0 {
                 is $key,    '$.bla.0';

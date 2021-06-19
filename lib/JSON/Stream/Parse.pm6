@@ -9,12 +9,21 @@ has Str     %.cache is default("");
 
 method json-path($num = 0) { @!path.head(* - $num).join: "." }
 
-multi submethod TWEAK(:@subscribed is copy) {
+multi submethod TWEAK(:@subscribed) {
+    @!subscribed = @subscribed.nodemap: -> $_ {
+        $_ ~~ Str
+            ??
+                .subst(/".."/, ".**.", :g)
+                .subst(/['[' <.ws> (\"|\')] ~ [ $0 <.ws> ']' ] (\w*?) /, { ".{ .[1] }" }, :g)
+                .subst(/'[' ~ ']' (\d+?) /, { ".{ [1] }" }, :g)
+                .split(".")
+                .duckmap(&transform)
+                .Array
+            !! $_
+    }
     my multi transform("*")  { *  }
     my multi transform("**") { ** }
-    my multi trans-l1(Positional $p) { $p }
-    my multi trans-l1(Str $s)        { $s.split(".").duckmap(&transform).Array }
-    @!subscribed = @subscribed.duckmap: &trans-l1;
+    my multi trans-l1(Str $s) { $s.split(".").duckmap(&transform).Array }
 }
 
 #my $*DEBUG = True;
