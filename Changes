@@ -1,6 +1,8 @@
 Revision history for JSON-Stream
 
 {{$NEXT}}
+
+0.0.5  2021-06-23T01:04:21+01:00
     - Improve tests
 
 0.0.4  2021-06-19T23:15:39+01:00
