@@ -10,22 +10,14 @@ A JSON stream parser
 use JSON::Stream;
 =end code
 
-=begin code :lang<raku> :subtest("Emit twice")
-plan 6;
+=begin code :lang<raku> :output('rx/"# OUTPUT:" \n [ ^^ <.ws> "# " ( .*? \n ) <.ws> ]*/')
 react whenever json-stream "a-big-json-file.json".IO.open.Supply, '$.employees.*' -> (:$key, :$value) {
-    [
-        {
-            is $key,         '$.employees.0';
-            is $value<name>, 'John';
-            is $value<age>,  40;
-        },
-        {
-            is $key,         '$.employees.1';
-            is $value<name>, 'Peter';
-            is $value<age>,  30;
-        }
-    ].[$++].()
+    say "$key => $value<name> - $value<age>"
 }
+
+# OUTPUT:
+# $.employees.0 => John - 40
+# $.employees.1 => Peter - 30
 =end code
 
 Having this as an example of 'a-big-json-file.json'
@@ -44,11 +36,16 @@ Having this as an example of 'a-big-json-file.json'
 It doesn't validate the JSON. That's good for cases where the JSON isn't properly terminated.
 Example:
 
-=begin code :lang<raku> :subtest("Emits 4 times")
-plan 4;
+=begin code :lang<raku> :output('rx/"# OUTPUT:" \n [ ^^ <.ws> "# " ( .*? \n ) <.ws> ]*/')
 react whenever json-stream Supply.from-list(< { "bla" : [1,2,3,4], >), '$.bla.*' -> (:key($), :$value) {
-   is $value, ++$
+   say $value
 }
+
+# OUTPUT:
+# 1
+# 2
+# 3
+# 4
 =end code
 
 =end pod

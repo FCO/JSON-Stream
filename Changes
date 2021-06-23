@@ -1,6 +1,7 @@
 Revision history for JSON-Stream
 
 {{$NEXT}}
+    - Improve tests
 
 0.0.4  2021-06-19T23:15:39+01:00
     - Add tests on pod
